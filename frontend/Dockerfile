@@ -1,7 +1,7 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package*.json vite.config.ts tsconfig.json tailwind.config.js postcss.config.js index.html ./
-RUN npm ci
+RUN npm install
 COPY src/ ./src/
 COPY public/ ./public/
 ARG VITE_API_URL=/api

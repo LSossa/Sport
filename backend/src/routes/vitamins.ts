@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import db from '../db/client';
+import { addDays } from '../db/dateUtils';
 import type { Vitamin } from '../types';
 
 const router = Router();
@@ -16,7 +17,7 @@ const VitaminBody = z.object({
 router.get('/', (req, res) => {
   const { date, week } = req.query;
   if (date) return res.json(db.prepare('SELECT * FROM vitamins WHERE date = ? ORDER BY logged_at DESC').all(date));
-  if (week) return res.json(db.prepare('SELECT * FROM vitamins WHERE date >= ? AND date < date(?, "+7 days") ORDER BY date, logged_at').all(week, week));
+  if (week) return res.json(db.prepare('SELECT * FROM vitamins WHERE date >= ? AND date < ? ORDER BY date, logged_at').all(week, addDays(week as string, 7)));
   res.json(db.prepare('SELECT * FROM vitamins ORDER BY date DESC, logged_at DESC LIMIT 50').all());
 });
 

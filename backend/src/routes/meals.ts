@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import db from '../db/client';
+import { addDays } from '../db/dateUtils';
 import type { Meal } from '../types';
 
 const router = Router();
@@ -23,8 +24,8 @@ router.get('/', (req, res) => {
   }
   if (week) {
     return res.json(db.prepare(
-      'SELECT * FROM meals WHERE date >= ? AND date < date(?, "+7 days") ORDER BY date, logged_at'
-    ).all(week, week));
+      'SELECT * FROM meals WHERE date >= ? AND date < ? ORDER BY date, logged_at'
+    ).all(week, addDays(week as string, 7)));
   }
   res.json(db.prepare('SELECT * FROM meals ORDER BY date DESC, logged_at DESC LIMIT 50').all());
 });

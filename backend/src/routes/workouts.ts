@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import db from '../db/client';
+import { addDays } from '../db/dateUtils';
 import type { Workout, WorkoutExercise, ExerciseSet } from '../types';
 
 const router = Router();
@@ -8,9 +9,10 @@ const router = Router();
 const WorkoutBody = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   type: z.string().min(1),
-  duration_min: z.number().int().positive().nullable().optional(),
+  duration_min: z.number().positive().nullable().optional(),
+  distance_km: z.number().positive().nullable().optional(),
   notes: z.string().nullable().optional(),
-  is_detailed: z.boolean().optional(),
+  is_detailed: z.union([z.boolean(), z.number().int()]).optional(),
 });
 
 const ExerciseBody = z.object({
@@ -35,8 +37,8 @@ router.get('/', (req, res) => {
   }
   if (week) {
     const rows = db.prepare(
-      'SELECT * FROM workouts WHERE date >= ? AND date < date(?, "+7 days") ORDER BY date, logged_at'
-    ).all(week, week) as Workout[];
+      'SELECT * FROM workouts WHERE date >= ? AND date < ? ORDER BY date, logged_at'
+    ).all(week, addDays(week as string, 7)) as Workout[];
     return res.json(rows);
   }
   const rows = db.prepare('SELECT * FROM workouts ORDER BY date DESC, logged_at DESC LIMIT 50').all() as Workout[];
@@ -62,10 +64,10 @@ router.get('/:id', (req, res) => {
 router.post('/', (req, res) => {
   const parsed = WorkoutBody.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-  const { date, type, duration_min, notes, is_detailed } = parsed.data;
+  const { date, type, duration_min, distance_km, notes, is_detailed } = parsed.data;
   const result = db.prepare(
-    'INSERT INTO workouts (date, type, duration_min, notes, is_detailed) VALUES (?, ?, ?, ?, ?)'
-  ).run(date, type, duration_min ?? null, notes ?? null, is_detailed ? 1 : 0);
+    'INSERT INTO workouts (date, type, duration_min, distance_km, notes, is_detailed) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(date, type, duration_min ?? null, distance_km ?? null, notes ?? null, is_detailed ? 1 : 0);
   const row = db.prepare('SELECT * FROM workouts WHERE id = ?').get(result.lastInsertRowid) as Workout;
   res.status(201).json(row);
 });
@@ -73,12 +75,12 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
   const parsed = WorkoutBody.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-  const { date, type, duration_min, notes, is_detailed } = parsed.data;
+  const { date, type, duration_min, distance_km, notes, is_detailed } = parsed.data;
   const existing = db.prepare('SELECT * FROM workouts WHERE id = ?').get(req.params.id) as Workout | undefined;
   if (!existing) return res.status(404).json({ error: 'Not found' });
   db.prepare(
-    'UPDATE workouts SET date=COALESCE(?,date), type=COALESCE(?,type), duration_min=COALESCE(?,duration_min), notes=COALESCE(?,notes), is_detailed=COALESCE(?,is_detailed) WHERE id=?'
-  ).run(date ?? null, type ?? null, duration_min ?? null, notes ?? null, is_detailed != null ? (is_detailed ? 1 : 0) : null, req.params.id);
+    'UPDATE workouts SET date=COALESCE(?,date), type=COALESCE(?,type), duration_min=COALESCE(?,duration_min), distance_km=COALESCE(?,distance_km), notes=COALESCE(?,notes), is_detailed=COALESCE(?,is_detailed) WHERE id=?'
+  ).run(date ?? null, type ?? null, duration_min ?? null, distance_km ?? null, notes ?? null, is_detailed != null ? (is_detailed ? 1 : 0) : null, req.params.id);
   res.json(db.prepare('SELECT * FROM workouts WHERE id = ?').get(req.params.id));
 });
 

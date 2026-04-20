@@ -4,6 +4,7 @@ export interface Workout {
   date: string;
   type: string;
   duration_min: number | null;
+  distance_km: number | null;
   notes: string | null;
   is_detailed: number;
 }

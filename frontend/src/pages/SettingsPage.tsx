@@ -16,7 +16,7 @@ const CATEGORIES = [
 interface FormValues {
   timezone: string;
   water_goal_ml: string;
-  [key: string]: string;
+  [key: string]: string | boolean;
 }
 
 export function SettingsPage() {
@@ -33,7 +33,7 @@ export function SettingsPage() {
       };
       for (const cat of CATEGORIES) {
         vals[`cutoff_${cat.key}`] = settings[`reminder_cutoff_${cat.key}`] ?? '21:00';
-        vals[`enabled_${cat.key}`] = settings[`reminder_enabled_${cat.key}`] ?? 'true';
+        vals[`enabled_${cat.key}`] = (settings[`reminder_enabled_${cat.key}`] ?? 'true') === 'true';
       }
       reset(vals);
     }
@@ -46,7 +46,7 @@ export function SettingsPage() {
     };
     for (const cat of CATEGORIES) {
       payload[`reminder_cutoff_${cat.key}`] = values[`cutoff_${cat.key}`];
-      payload[`reminder_enabled_${cat.key}`] = values[`enabled_${cat.key}`] === 'true' ? 'true' : 'false';
+      payload[`reminder_enabled_${cat.key}`] = (values[`enabled_${cat.key}`] === true || values[`enabled_${cat.key}`] === 'true') ? 'true' : 'false';
     }
     await save(payload);
   };
@@ -80,7 +80,7 @@ export function SettingsPage() {
                 <span className="text-lg w-7">{cat.icon}</span>
                 <span className="text-slate-300 flex-1 text-sm">{cat.label}</span>
                 <label className="flex items-center gap-1 cursor-pointer">
-                  <input type="checkbox" value="true"
+                  <input type="checkbox"
                     {...register(`enabled_${cat.key}`)}
                     className="accent-green-500 w-4 h-4" />
                 </label>

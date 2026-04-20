@@ -1,29 +1,31 @@
 import { Router } from 'express';
 import db from '../db/client';
+import { addDays } from '../db/dateUtils';
 
 const router = Router();
 
-function weekData(table: string, dateField: string, start: string) {
+function weekData(table: string, start: string, end: string) {
   return db.prepare(
-    `SELECT date, COUNT(*) as count FROM ${table} WHERE date >= ? AND date < date(?, "+7 days") GROUP BY date`
-  ).all(start, start) as { date: string; count: number }[];
+    `SELECT date, COUNT(*) as count FROM ${table} WHERE date >= ? AND date < ? GROUP BY date`
+  ).all(start, end) as { date: string; count: number }[];
 }
 
 router.get('/week', (req, res) => {
   const start = (req.query.start as string) ?? new Date().toISOString().slice(0, 10);
+  const end = addDays(start, 7);
 
   const waterGoal = Number((db.prepare("SELECT value FROM settings WHERE key='water_goal_ml'").get() as { value: string } | undefined)?.value ?? 2500);
 
   const waterRows = db.prepare(
-    `SELECT date, SUM(amount_ml) as total_ml FROM water_logs WHERE date >= ? AND date < date(?, "+7 days") GROUP BY date`
-  ).all(start, start) as { date: string; total_ml: number }[];
+    `SELECT date, SUM(amount_ml) as total_ml FROM water_logs WHERE date >= ? AND date < ? GROUP BY date`
+  ).all(start, end) as { date: string; total_ml: number }[];
 
   res.json({
     start,
-    workouts: weekData('workouts', 'date', start),
-    meals: weekData('meals', 'date', start),
-    shakes: weekData('shakes', 'date', start),
-    vitamins: weekData('vitamins', 'date', start),
+    workouts: weekData('workouts', start, end),
+    meals: weekData('meals', start, end),
+    shakes: weekData('shakes', start, end),
+    vitamins: weekData('vitamins', start, end),
     water: waterRows,
     water_goal_ml: waterGoal,
   });
