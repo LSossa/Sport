@@ -1,0 +1,23 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    volumes:
+      - ./backend/src:/app/src
+      - sport-data:/data
+    environment:
+      - DB_PATH=/data/sport.db
+    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+    ports:
+      - "3001:3001"
+
+  frontend:
+    build:
+      context: ./frontend
+    volumes:
+      - ./frontend/src:/app/src
+    ports:
+      - "5173:5173"
+    command: npx vite --host 0.0.0.0
+    environment:
+      - VITE_API_URL=http://localhost:3001
