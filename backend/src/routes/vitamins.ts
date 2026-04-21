@@ -3,6 +3,8 @@ import { z } from 'zod';
 import db from '../db/client';
 import { addDays } from '../db/dateUtils';
 import type { Vitamin } from '../types';
+import { awardXp } from '../services/gamificationService';
+import { sendPushToAll } from '../services/pushService';
 
 const router = Router();
 
@@ -34,7 +36,12 @@ router.post('/', (req, res) => {
   const result = db.prepare(
     'INSERT INTO vitamins (date, name, dose_mg, quantity, notes) VALUES (?, ?, ?, ?, ?)'
   ).run(d.date, d.name, d.dose_mg ?? null, d.quantity ?? 1, d.notes ?? null);
-  res.status(201).json(db.prepare('SELECT * FROM vitamins WHERE id = ?').get(result.lastInsertRowid));
+  const row = db.prepare('SELECT * FROM vitamins WHERE id = ?').get(result.lastInsertRowid);
+  const { newBadges } = awardXp('vitamins', Number(result.lastInsertRowid), d.date);
+  for (const badge of newBadges) {
+    sendPushToAll({ title: 'Badge Unlocked!', body: `You earned: ${badge.name}`, category: 'badge', url: '/' }).catch(() => {});
+  }
+  res.status(201).json(row);
 });
 
 router.put('/:id', (req, res) => {

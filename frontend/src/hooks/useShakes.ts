@@ -13,7 +13,7 @@ export function useCreateShake() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: Omit<Shake, 'id' | 'logged_at'>) => api.post<Shake>('/shakes', data),
-    onSuccess: (s) => { qc.invalidateQueries({ queryKey: ['shakes', s.date] }); qc.invalidateQueries({ queryKey: ['dashboard'] }); },
+    onSuccess: (s) => { qc.invalidateQueries({ queryKey: ['shakes', s.date] }); qc.invalidateQueries({ queryKey: ['dashboard'] }); qc.invalidateQueries({ queryKey: ['gamification'] }); },
   });
 }
 

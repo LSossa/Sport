@@ -101,3 +101,44 @@ export interface DayData {
   water_total_ml: number;
   water_goal_ml: number;
 }
+
+export interface GamificationStreaks {
+  run: number;
+  wod: number;
+  vitamins: number;
+  shakes: number;
+  water: number;
+}
+
+export interface GamificationMissions {
+  workout:  { done: boolean; hasRun: boolean; hasWod: boolean };
+  vitamins: { done: boolean };
+  shakes:   { done: boolean };
+  water:    { done: boolean; amount_ml: number; goal_ml: number; percent: number };
+}
+
+export interface GamificationXp {
+  total: number;
+  level: string;
+  levelMinXp: number;
+  nextLevelXp: number | null;
+  progressPercent: number;
+}
+
+export interface GamificationBadge {
+  id: string;
+  name: string;
+  description: string;
+  earnedAt?: string;
+}
+
+export interface GamificationSummary {
+  today: string;
+  streaks: GamificationStreaks;
+  missions: GamificationMissions;
+  xp: GamificationXp;
+  badges: {
+    earned: GamificationBadge[];
+    upcoming: GamificationBadge[];
+  };
+}

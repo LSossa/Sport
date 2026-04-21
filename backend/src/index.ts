@@ -14,6 +14,7 @@ import waterRouter from './routes/water';
 import dashboardRouter from './routes/dashboard';
 import settingsRouter from './routes/settings';
 import pushRouter from './routes/push';
+import gamificationRouter from './routes/gamification';
 
 const app = express();
 const PORT = process.env.PORT ?? 3001;
@@ -36,6 +37,7 @@ app.use('/api/water', waterRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/push', pushRouter);
+app.use('/api/gamification', gamificationRouter);
 
 app.use(errorHandler);
 

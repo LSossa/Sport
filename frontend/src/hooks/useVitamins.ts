@@ -13,7 +13,7 @@ export function useCreateVitamin() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: Omit<Vitamin, 'id' | 'logged_at'>) => api.post<Vitamin>('/vitamins', data),
-    onSuccess: (v) => { qc.invalidateQueries({ queryKey: ['vitamins', v.date] }); qc.invalidateQueries({ queryKey: ['dashboard'] }); },
+    onSuccess: (v) => { qc.invalidateQueries({ queryKey: ['vitamins', v.date] }); qc.invalidateQueries({ queryKey: ['dashboard'] }); qc.invalidateQueries({ queryKey: ['gamification'] }); },
   });
 }
 

@@ -3,6 +3,8 @@ import { z } from 'zod';
 import db from '../db/client';
 import { addDays } from '../db/dateUtils';
 import type { Workout, WorkoutExercise, ExerciseSet } from '../types';
+import { awardXp } from '../services/gamificationService';
+import { sendPushToAll } from '../services/pushService';
 
 const router = Router();
 
@@ -69,6 +71,11 @@ router.post('/', (req, res) => {
     'INSERT INTO workouts (date, type, duration_min, distance_km, notes, is_detailed) VALUES (?, ?, ?, ?, ?, ?)'
   ).run(date, type, duration_min ?? null, distance_km ?? null, notes ?? null, is_detailed ? 1 : 0);
   const row = db.prepare('SELECT * FROM workouts WHERE id = ?').get(result.lastInsertRowid) as Workout;
+  const source = type === 'Running' ? 'workout_run' : 'workout_wod';
+  const { newBadges } = awardXp(source, Number(result.lastInsertRowid), date);
+  for (const badge of newBadges) {
+    sendPushToAll({ title: 'Badge Unlocked!', body: `You earned: ${badge.name}`, category: 'badge', url: '/' }).catch(() => {});
+  }
   res.status(201).json(row);
 });
 

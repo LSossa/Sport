@@ -13,7 +13,7 @@ export function useCreateWater() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: { date: string; amount_ml: number }) => api.post<WaterLog>('/water', data),
-    onSuccess: (w) => { qc.invalidateQueries({ queryKey: ['water', w.date] }); qc.invalidateQueries({ queryKey: ['dashboard'] }); },
+    onSuccess: (w) => { qc.invalidateQueries({ queryKey: ['water', w.date] }); qc.invalidateQueries({ queryKey: ['dashboard'] }); qc.invalidateQueries({ queryKey: ['gamification'] }); },
   });
 }
 

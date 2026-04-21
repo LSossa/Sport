@@ -20,7 +20,7 @@ export function useCreateWorkout() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: Omit<Workout, 'id' | 'logged_at'>) => api.post<Workout>('/workouts', data),
-    onSuccess: (w) => { qc.invalidateQueries({ queryKey: ['workouts', w.date] }); qc.invalidateQueries({ queryKey: ['dashboard'] }); },
+    onSuccess: (w) => { qc.invalidateQueries({ queryKey: ['workouts', w.date] }); qc.invalidateQueries({ queryKey: ['dashboard'] }); qc.invalidateQueries({ queryKey: ['gamification'] }); },
   });
 }
 

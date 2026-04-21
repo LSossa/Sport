@@ -3,6 +3,8 @@ import { z } from 'zod';
 import db from '../db/client';
 import { addDays } from '../db/dateUtils';
 import type { WaterLog } from '../types';
+import { awardXp } from '../services/gamificationService';
+import { sendPushToAll } from '../services/pushService';
 
 const router = Router();
 
@@ -29,7 +31,12 @@ router.post('/', (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   const { date, amount_ml } = parsed.data;
   const result = db.prepare('INSERT INTO water_logs (date, amount_ml) VALUES (?, ?)').run(date, amount_ml);
-  res.status(201).json(db.prepare('SELECT * FROM water_logs WHERE id = ?').get(result.lastInsertRowid));
+  const row = db.prepare('SELECT * FROM water_logs WHERE id = ?').get(result.lastInsertRowid);
+  const { newBadges } = awardXp('water_any', Number(result.lastInsertRowid), date);
+  for (const badge of newBadges) {
+    sendPushToAll({ title: 'Badge Unlocked!', body: `You earned: ${badge.name}`, category: 'badge', url: '/' }).catch(() => {});
+  }
+  res.status(201).json(row);
 });
 
 router.put('/:id', (req, res) => {

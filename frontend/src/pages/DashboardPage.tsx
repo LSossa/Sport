@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
 import { WeekStrip } from '../components/dashboard/WeekStrip';
 import { CategoryCard } from '../components/dashboard/CategoryCard';
+import { GamificationSection } from '../components/dashboard/GamificationSection';
 import { useWeeklyDashboard } from '../hooks/useDashboard';
 
 export function DashboardPage() {
@@ -32,6 +33,8 @@ export function DashboardPage() {
       </div>
 
       <WeekStrip selected={weekDate} onChange={setWeekDate} />
+
+      <GamificationSection />
 
       {isLoading ? (
         <div className="space-y-3">
