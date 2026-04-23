@@ -1,8 +1,15 @@
 import { createHash } from 'crypto';
 import db from '../db/client';
 
-const AUTH_URL = 'https://account.huami.com/v2/client/login';
-const DATA_URL = 'https://api-mifit-us2.huami.com/v1/data/band_data.json';
+// Try EU endpoint first (user is in NL), fall back to US
+const AUTH_ENDPOINTS = [
+  'https://account-eu.huami.com/v2/client/login',
+  'https://account.huami.com/v2/client/login',
+];
+const DATA_ENDPOINTS = [
+  'https://api-mifit-eu.huami.com/v1/data/band_data.json',
+  'https://api-mifit-us2.huami.com/v1/data/band_data.json',
+];
 
 function getSetting(key: string): string | undefined {
   return (db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined)?.value;
@@ -27,60 +34,79 @@ export function getZeppStatus() {
 export function saveZeppCredentials(email: string, password: string): void {
   setSetting('zepp_email', email);
   setSetting('zepp_password', password);
-  // Clear cached token so next sync re-authenticates
-  db.prepare("DELETE FROM settings WHERE key = 'zepp_access_token'").run();
+  db.prepare("DELETE FROM settings WHERE key IN ('zepp_access_token','zepp_data_url')").run();
 }
 
 export function disconnectZepp(): void {
-  for (const key of ['zepp_email', 'zepp_password', 'zepp_access_token', 'zepp_last_sync']) {
+  for (const key of ['zepp_email', 'zepp_password', 'zepp_access_token', 'zepp_last_sync', 'zepp_data_url']) {
     db.prepare('DELETE FROM settings WHERE key = ?').run(key);
   }
 }
 
-async function authenticate(): Promise<string> {
-  const email = getSetting('zepp_email');
-  const password = getSetting('zepp_password');
-  if (!email || !password) throw new Error('Zepp credentials not configured');
-
-  const passwordMd5 = createHash('md5').update(password).digest('hex');
-  const deviceId = 'e2b1c3d4-f5a6-7890-bcde-f01234567890';
-
-  const body = new URLSearchParams({
+function buildAuthBody(email: string, password: string): URLSearchParams {
+  return new URLSearchParams({
     app_name: 'com.xiaomi.hm.health',
     dn: 'account.huami.com,api-user.huami.com,api-watch.huami.com,app-analytics.huami.com',
-    device_id: deviceId,
+    device_id: 'e2b1c3d4-f5a6-7890-bcde-f01234567890',
     device_model: 'android_phone',
     grant_type: 'password',
-    password: passwordMd5,
+    password,
     source: 'com.xiaomi.hm.health',
     third_name: 'huami_phone',
     token: '0',
     user_name: email,
   });
+}
 
-  const res = await fetch(AUTH_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body.toString(),
-  });
+async function tryAuth(authUrl: string, email: string, password: string): Promise<string | null> {
+  // Try plain-text password first, then MD5 — newer API versions dropped the MD5 requirement
+  for (const pwd of [password, createHash('md5').update(password).digest('hex')]) {
+    const res = await fetch(authUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: buildAuthBody(email, pwd).toString(),
+    });
 
-  if (!res.ok) throw new Error(`Zepp auth failed: HTTP ${res.status}`);
+    const text = await res.text();
+    console.log(`[zepp] auth ${authUrl} status=${res.status} body=${text.slice(0, 300)}`);
 
-  const data = await res.json() as {
-    token_info?: { login_token?: string };
-    error_code?: string;
-    message?: string;
-  };
+    if (!res.ok) continue;
 
-  const token = data.token_info?.login_token;
-  if (!token) throw new Error(`Zepp auth rejected: ${data.message ?? data.error_code ?? 'unknown error'}`);
+    let data: { token_info?: { login_token?: string }; error_code?: string; message?: string };
+    try { data = JSON.parse(text); } catch { continue; }
 
-  setSetting('zepp_access_token', token);
-  return token;
+    const token = data.token_info?.login_token;
+    if (token) return token;
+  }
+  return null;
+}
+
+async function authenticate(): Promise<{ token: string; dataUrl: string }> {
+  const email = getSetting('zepp_email');
+  const password = getSetting('zepp_password');
+  if (!email || !password) throw new Error('Zepp credentials not configured');
+
+  // Try every auth endpoint until one works
+  for (let i = 0; i < AUTH_ENDPOINTS.length; i++) {
+    const token = await tryAuth(AUTH_ENDPOINTS[i], email, password);
+    if (token) {
+      const dataUrl = DATA_ENDPOINTS[i] ?? DATA_ENDPOINTS[0];
+      setSetting('zepp_access_token', token);
+      setSetting('zepp_data_url', dataUrl);
+      console.log(`[zepp] authenticated via ${AUTH_ENDPOINTS[i]}`);
+      return { token, dataUrl };
+    }
+  }
+
+  throw new Error(
+    'Zepp authentication failed. Check your email and password. ' +
+    'Make sure you created a Zepp account with email/password (not Google login). ' +
+    'Check the server logs for the exact API response.'
+  );
 }
 
 interface WeightEntry {
-  date: string;      // YYYY-MM-DD
+  date: string;
   weight_kg: number;
   body_fat_pct: number | null;
 }
@@ -91,20 +117,21 @@ function parseWeightItems(items: unknown[]): WeightEntry[] {
     if (typeof item !== 'object' || item === null) continue;
     const obj = item as Record<string, unknown>;
 
-    // date_time format: "2024-01-15 08:30:00" or "20240115"
     let date: string | null = null;
     if (typeof obj['date_time'] === 'string') {
-      date = (obj['date_time'] as string).slice(0, 10).replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3');
+      // "2024-01-15 08:30:00" or "20240115083000"
+      const raw = (obj['date_time'] as string).replace(/\s.*/, '').replace(/^(\d{4})(\d{2})(\d{2}).*/, '$1-$2-$3');
+      date = raw;
     } else if (typeof obj['date'] === 'string') {
       const d = obj['date'] as string;
       date = d.length === 8 ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}` : d.slice(0, 10);
     }
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
 
-    // weight in grams
     const weightRaw = obj['weight'] ?? obj['weight_kg'];
     if (typeof weightRaw !== 'number') continue;
-    const weight_kg = weightRaw > 500 ? weightRaw / 1000 : weightRaw; // grams → kg if > 500
+    // Zepp returns weight in grams (e.g. 75500), but some endpoints return kg directly
+    const weight_kg = weightRaw > 500 ? weightRaw / 1000 : weightRaw;
 
     const fatRaw = obj['body_fat'] ?? obj['fat_rate'] ?? obj['body_fat_pct'];
     const body_fat_pct = typeof fatRaw === 'number' ? fatRaw : null;
@@ -116,15 +143,20 @@ function parseWeightItems(items: unknown[]): WeightEntry[] {
 
 export async function syncWeight(): Promise<{ imported: number; updated: number }> {
   let token = getSetting('zepp_access_token');
-  if (!token) token = await authenticate();
+  let dataUrl = getSetting('zepp_data_url') ?? DATA_ENDPOINTS[0];
+
+  if (!token) {
+    const auth = await authenticate();
+    token = auth.token;
+    dataUrl = auth.dataUrl;
+  }
 
   const toDate = new Date();
   const fromDate = new Date();
   fromDate.setDate(fromDate.getDate() - 90);
-
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
-  const url = new URL(DATA_URL);
+  const url = new URL(dataUrl);
   url.searchParams.set('apptoken', token);
   url.searchParams.set('query_type', 'weight');
   url.searchParams.set('device_type', '0i');
@@ -132,34 +164,37 @@ export async function syncWeight(): Promise<{ imported: number; updated: number 
   url.searchParams.set('to_date', fmt(toDate));
   url.searchParams.set('limit', '300');
 
-  let res = await fetch(url.toString(), {
-    headers: { 'apptoken': token },
-  });
+  let res = await fetch(url.toString(), { headers: { apptoken: token } });
 
-  // Token may be stale — re-authenticate once
   if (res.status === 401 || res.status === 403) {
-    token = await authenticate();
+    const auth = await authenticate();
+    token = auth.token;
+    dataUrl = auth.dataUrl;
+    url.hostname = new URL(dataUrl).hostname;
     url.searchParams.set('apptoken', token);
-    res = await fetch(url.toString(), { headers: { 'apptoken': token } });
+    res = await fetch(url.toString(), { headers: { apptoken: token } });
   }
 
-  if (!res.ok) throw new Error(`Zepp data fetch failed: HTTP ${res.status}`);
+  const text = await res.text();
+  console.log(`[zepp] data status=${res.status} body=${text.slice(0, 500)}`);
 
-  const json = await res.json() as {
-    code?: number;
-    data?: { items?: unknown[] } | unknown[];
-    message?: string;
-  };
+  if (!res.ok) throw new Error(`Zepp data fetch failed: HTTP ${res.status} — ${text.slice(0, 200)}`);
 
-  if (json.code !== 1 && json.code !== undefined) {
-    throw new Error(`Zepp API error: ${json.message ?? JSON.stringify(json)}`);
+  let json: { code?: number; data?: { items?: unknown[] } | unknown[]; message?: string };
+  try { json = JSON.parse(text); } catch { throw new Error(`Zepp returned non-JSON: ${text.slice(0, 200)}`); }
+
+  if (json.code !== undefined && json.code !== 1) {
+    throw new Error(`Zepp API error (code ${json.code}): ${json.message ?? text.slice(0, 200)}`);
   }
 
-  // Normalise response shape — some versions wrap in data.items, some return array directly
   let rawItems: unknown[] = [];
   if (Array.isArray(json)) rawItems = json;
   else if (Array.isArray(json.data)) rawItems = json.data;
-  else if (json.data && typeof json.data === 'object' && 'items' in json.data) rawItems = (json.data as { items: unknown[] }).items ?? [];
+  else if (json.data && typeof json.data === 'object' && 'items' in json.data) {
+    rawItems = (json.data as { items: unknown[] }).items ?? [];
+  }
+
+  console.log(`[zepp] parsed ${rawItems.length} raw items`);
 
   const entries = parseWeightItems(rawItems);
 
