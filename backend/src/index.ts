@@ -15,7 +15,10 @@ import settingsRouter from './routes/settings';
 import pushRouter from './routes/push';
 import gamificationRouter from './routes/gamification';
 import stravaRouter from './routes/strava';
+import zeppRouter from './routes/zepp';
+import weightRouter from './routes/weight';
 import { syncStravaOnStartup } from './services/stravaService';
+import { syncZeppOnStartup } from './services/zeppService';
 
 const app = express();
 const PORT = process.env.PORT ?? 3001;
@@ -28,6 +31,7 @@ initWebPush();
 startReminderScheduler();
 startBackupScheduler();
 syncStravaOnStartup();
+syncZeppOnStartup();
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
 
@@ -40,6 +44,8 @@ app.use('/api/settings', settingsRouter);
 app.use('/api/push', pushRouter);
 app.use('/api/gamification', gamificationRouter);
 app.use('/api/strava', stravaRouter);
+app.use('/api/zepp', zeppRouter);
+app.use('/api/weight', weightRouter);
 
 app.use(errorHandler);
 

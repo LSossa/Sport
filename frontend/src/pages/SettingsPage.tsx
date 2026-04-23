@@ -6,6 +6,7 @@ import { Layout } from '../components/layout/Layout';
 import { useSettings, useSaveSettings } from '../hooks/useSettings';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { useStravaStatus, useStravaSync, useStravaCallback, useStravaDisconnect, useStravaAuthUrl } from '../hooks/useStrava';
+import { useZeppStatus, useZeppSaveCredentials, useZeppSync, useZeppDisconnect } from '../hooks/useZepp';
 
 const CATEGORIES = [
   { key: 'workouts', label: 'Workouts', icon: '🏋️' },
@@ -35,6 +36,40 @@ export function SettingsPage() {
   const stravaCallback = useStravaCallback();
   const stravaDisconnect = useStravaDisconnect();
   const stravaAuthUrl = useStravaAuthUrl();
+
+  const { data: zeppStatus } = useZeppStatus();
+  const zeppSaveCreds = useZeppSaveCredentials();
+  const zeppSync = useZeppSync();
+  const zeppDisconnect = useZeppDisconnect();
+  const [zeppEmail, setZeppEmail] = useState('');
+  const [zeppPassword, setZeppPassword] = useState('');
+  const [zeppResult, setZeppResult] = useState<string | null>(null);
+  const [zeppError, setZeppError] = useState<string | null>(null);
+
+  const handleZeppConnect = async () => {
+    setZeppError(null);
+    setZeppResult(null);
+    if (!zeppEmail || !zeppPassword) { setZeppError('Enter email and password'); return; }
+    zeppSaveCreds.mutate({ email: zeppEmail, password: zeppPassword }, {
+      onSuccess: () => {
+        setZeppPassword('');
+        zeppSync.mutate(undefined, {
+          onSuccess: ({ imported, updated }) => setZeppResult(`Connected! ${imported} entries imported, ${updated} updated`),
+          onError: (err) => setZeppError((err as Error).message),
+        });
+      },
+      onError: (err) => setZeppError((err as Error).message),
+    });
+  };
+
+  const handleZeppSync = () => {
+    setZeppError(null);
+    setZeppResult(null);
+    zeppSync.mutate(undefined, {
+      onSuccess: ({ imported, updated }) => setZeppResult(`${imported} new, ${updated} updated`),
+      onError: (err) => setZeppError((err as Error).message),
+    });
+  };
 
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [stravaError, setStravaError] = useState<string | null>(null);
@@ -113,6 +148,70 @@ export function SettingsPage() {
 
   return (
     <Layout title="Settings">
+      {/* Zepp / Mi Fit weight sync */}
+      <section className="bg-slate-800 rounded-xl p-4 mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-xl">⚖️</span>
+          <h2 className="font-semibold text-white">Zepp Weight Sync</h2>
+          {zeppStatus?.connected && (
+            <span className="ml-auto text-xs bg-green-700 text-green-200 rounded-full px-2 py-0.5">Connected</span>
+          )}
+        </div>
+
+        {zeppError && <p className="text-red-400 text-sm mb-3">{zeppError}</p>}
+        {zeppResult && <p className="text-green-400 text-sm mb-3">{zeppResult}</p>}
+
+        {zeppStatus?.connected ? (
+          <div className="space-y-3">
+            <p className="text-sm text-slate-300">Account: <span className="text-white font-medium">{zeppStatus.email}</span></p>
+            {zeppStatus.lastSync && (
+              <p className="text-xs text-slate-500">Last sync: {new Date(zeppStatus.lastSync).toLocaleString()}</p>
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={handleZeppSync}
+                disabled={zeppSync.isPending}
+                className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
+              >
+                <RefreshCw size={15} className={zeppSync.isPending ? 'animate-spin' : ''} />
+                {zeppSync.isPending ? 'Syncing…' : 'Sync Now'}
+              </button>
+              <button
+                onClick={() => { setZeppError(null); setZeppResult(null); zeppDisconnect.mutate(); }}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700 text-slate-300 text-sm hover:bg-slate-600 transition-colors"
+              >
+                <Unlink size={15} /> Disconnect
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-xs text-slate-400">Enter your Zepp Life / Mi Fit account credentials to auto-import weight from your Mi scale.</p>
+            <input
+              type="email"
+              placeholder="Zepp Life email"
+              value={zeppEmail}
+              onChange={e => setZeppEmail(e.target.value)}
+              className="w-full bg-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-green-500"
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={zeppPassword}
+              onChange={e => setZeppPassword(e.target.value)}
+              className="w-full bg-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-green-500"
+            />
+            <button
+              onClick={handleZeppConnect}
+              disabled={zeppSaveCreds.isPending || zeppSync.isPending}
+              className="w-full py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
+            >
+              {zeppSync.isPending ? 'Connecting & syncing…' : 'Connect & Sync'}
+            </button>
+          </div>
+        )}
+      </section>
+
       {/* Strava section — outside the main form so its inputs don't interfere */}
       <section className="bg-slate-800 rounded-xl p-4 mb-6">
         <div className="flex items-center gap-2 mb-3">

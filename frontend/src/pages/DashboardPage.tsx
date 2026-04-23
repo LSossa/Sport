@@ -6,6 +6,7 @@ import { Layout } from '../components/layout/Layout';
 import { WeekStrip } from '../components/dashboard/WeekStrip';
 import { CategoryCard } from '../components/dashboard/CategoryCard';
 import { GamificationSection } from '../components/dashboard/GamificationSection';
+import { WeightChart } from '../components/dashboard/WeightChart';
 import { useWeeklyDashboard } from '../hooks/useDashboard';
 
 export function DashboardPage() {
@@ -35,6 +36,7 @@ export function DashboardPage() {
       <WeekStrip selected={weekDate} onChange={setWeekDate} />
 
       <GamificationSection />
+      <WeightChart />
 
       {isLoading ? (
         <div className="space-y-3">

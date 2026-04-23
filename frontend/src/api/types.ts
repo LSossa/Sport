@@ -117,6 +117,21 @@ export interface GamificationBadge {
   earnedAt?: string;
 }
 
+export interface WeightLog {
+  id: number;
+  logged_at: string;
+  date: string;
+  weight_kg: number;
+  body_fat_pct: number | null;
+  source: string;
+}
+
+export interface ZeppStatus {
+  connected: boolean;
+  email: string | null;
+  lastSync: string | null;
+}
+
 export interface StravaStatus {
   connected: boolean;
   athleteName: string | null;
