@@ -64,15 +64,16 @@ async function refreshIfNeeded(tokens: StravaTokens): Promise<string> {
 }
 
 export async function exchangeCode(code: string): Promise<{ athleteName: string }> {
-  const tokens = getStravaTokens();
-  if (!tokens?.clientId || !tokens?.clientSecret) throw new Error('Strava client credentials not configured');
+  const clientId = getSetting('strava_client_id');
+  const clientSecret = getSetting('strava_client_secret');
+  if (!clientId || !clientSecret) throw new Error('Strava client credentials not configured');
 
   const res = await fetch(STRAVA_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      client_id: tokens.clientId,
-      client_secret: tokens.clientSecret,
+      client_id: clientId,
+      client_secret: clientSecret,
       grant_type: 'authorization_code',
       code,
     }),
