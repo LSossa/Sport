@@ -1,13 +1,10 @@
 import { createHash } from 'crypto';
 import db from '../db/client';
 
-// Try EU endpoint first (user is in NL), fall back to US
 const AUTH_ENDPOINTS = [
-  'https://account-eu.huami.com/v2/client/login',
   'https://account.huami.com/v2/client/login',
 ];
 const DATA_ENDPOINTS = [
-  'https://api-mifit-eu.huami.com/v1/data/band_data.json',
   'https://api-mifit-us2.huami.com/v1/data/band_data.json',
 ];
 
