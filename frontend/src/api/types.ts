@@ -29,19 +29,6 @@ export interface ExerciseSet {
   notes: string | null;
 }
 
-export interface Meal {
-  id: number;
-  logged_at: string;
-  date: string;
-  meal_type: string | null;
-  description: string;
-  calories: number | null;
-  protein_g: number | null;
-  carbs_g: number | null;
-  fat_g: number | null;
-  notes: string | null;
-}
-
 export interface Shake {
   id: number;
   logged_at: string;
@@ -84,7 +71,6 @@ export interface WaterDaySummary {
 export interface WeekData {
   start: string;
   workouts: DaySummary[];
-  meals: DaySummary[];
   shakes: DaySummary[];
   vitamins: DaySummary[];
   water: WaterDaySummary[];
@@ -94,7 +80,6 @@ export interface WeekData {
 export interface DayData {
   date: string;
   workouts: Workout[];
-  meals: Meal[];
   shakes: Shake[];
   vitamins: Vitamin[];
   water: WaterLog[];
@@ -130,6 +115,12 @@ export interface GamificationBadge {
   name: string;
   description: string;
   earnedAt?: string;
+}
+
+export interface StravaStatus {
+  connected: boolean;
+  athleteName: string | null;
+  lastSync: string | null;
 }
 
 export interface GamificationSummary {

@@ -1,50 +1,72 @@
-import { useForm } from 'react-hook-form';
-import { useCreateShake } from '../../hooks/useShakes';
+import { CheckCircle2 } from 'lucide-react';
+import { useShakes, useCreateShake, useDeleteShake } from '../../hooks/useShakes';
 
-interface FormValues { name: string; brand: string; serving_g: string; calories: string; protein_g: string; notes: string; }
-
-const SHAKE_PRESETS = ['Protein Shake', 'Pre-Workout', 'Post-Workout', 'Mass Gainer'];
+const SHAKES = [
+  { name: 'Protein Shake',        icon: '🥛', optional: false },
+  { name: 'Creatine Monohydrate', icon: '💪', optional: false },
+  { name: 'Pre-Workout',          icon: '⚡', optional: true  },
+] as const;
 
 interface Props { date: string; onDone: () => void; }
 
 export function ShakeForm({ date, onDone }: Props) {
-  const { mutateAsync, isPending } = useCreateShake();
-  const { register, handleSubmit, reset, setValue } = useForm<FormValues>({ defaultValues: { name: '', brand: '', serving_g: '', calories: '', protein_g: '', notes: '' } });
+  const { data: logged = [] } = useShakes(date);
+  const { mutateAsync: create, isPending: isCreating } = useCreateShake();
+  const { mutateAsync: remove, isPending: isDeleting } = useDeleteShake();
+  const isPending = isCreating || isDeleting;
 
-  const onSubmit = async (v: FormValues) => {
-    await mutateAsync({
-      date, name: v.name, brand: v.brand || null,
-      serving_g: v.serving_g ? Number(v.serving_g) : null,
-      calories: v.calories ? Number(v.calories) : null,
-      protein_g: v.protein_g ? Number(v.protein_g) : null,
-      notes: v.notes || null,
-    });
-    reset(); onDone();
+  const tap = async (name: string) => {
+    const existing = logged.find(s => s.name === name);
+    if (existing) {
+      await remove({ id: existing.id, date });
+    } else {
+      await create({ date, name, brand: null, serving_g: null, calories: null, protein_g: null, notes: null });
+      onDone();
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-      <div className="flex gap-2 flex-wrap">
-        {SHAKE_PRESETS.map(p => (
-          <button key={p} type="button" onClick={() => setValue('name', p)}
-            className="px-3 py-1 rounded-full bg-slate-700 text-slate-300 text-sm hover:bg-slate-600">
-            {p}
+    <div className="space-y-3">
+      <p className="text-sm text-slate-400 text-center">Tap to log — tap again to undo</p>
+      <div className="grid grid-cols-2 gap-3">
+        {SHAKES.slice(0, 2).map(({ name, icon }) => {
+          const done = logged.some(s => s.name === name);
+          return (
+            <button
+              key={name}
+              onClick={() => tap(name)}
+              disabled={isPending}
+              className={`flex flex-col items-center justify-center gap-2 py-6 rounded-xl font-semibold transition-colors disabled:opacity-50 ${
+                done ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+            >
+              <span className="text-3xl">{icon}</span>
+              <span className="text-sm text-center leading-tight">{name}</span>
+              {done && <CheckCircle2 size={18} className="text-green-200" />}
+            </button>
+          );
+        })}
+      </div>
+      {(() => {
+        const { name, icon, optional } = SHAKES[2];
+        const done = logged.some(s => s.name === name);
+        return (
+          <button
+            onClick={() => tap(name)}
+            disabled={isPending}
+            className={`w-full flex items-center justify-between px-5 py-4 rounded-xl font-semibold transition-colors disabled:opacity-50 ${
+              done ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{icon}</span>
+              <span>{name}</span>
+              {optional && <span className="text-xs text-slate-400 font-normal">optional</span>}
+            </div>
+            {done && <CheckCircle2 size={20} className="text-green-200" />}
           </button>
-        ))}
-      </div>
-      <input {...register('name', { required: true })} placeholder="Shake / supplement name"
-        className="w-full bg-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-green-500" />
-      <input {...register('brand')} placeholder="Brand (optional)"
-        className="w-full bg-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-green-500" />
-      <div className="grid grid-cols-3 gap-2">
-        <input {...register('serving_g')} placeholder="Serving (g)" type="number" step="0.1" className="bg-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-green-500" />
-        <input {...register('calories')} placeholder="Calories" type="number" className="bg-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-green-500" />
-        <input {...register('protein_g')} placeholder="Protein (g)" type="number" step="0.1" className="bg-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-green-500" />
-      </div>
-      <textarea {...register('notes')} placeholder="Notes" rows={2} className="w-full bg-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-green-500 resize-none" />
-      <button type="submit" disabled={isPending} className="w-full py-3 rounded-lg bg-green-600 text-white font-semibold disabled:opacity-50 hover:bg-green-700 transition-colors">
-        {isPending ? 'Saving…' : 'Log Shake'}
-      </button>
-    </form>
+        );
+      })()}
+    </div>
   );
 }

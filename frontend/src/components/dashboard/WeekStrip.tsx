@@ -29,6 +29,7 @@ export function WeekStrip({ selected, onChange }: Props) {
           >
             <span className="text-xs font-medium">{format(day, 'EEE')}</span>
             <span className="text-sm font-bold">{format(day, 'd')}</span>
+            <span className={`mt-0.5 w-1 h-1 rounded-full ${isToday && !isSelected ? 'bg-green-400' : 'invisible'}`} />
           </button>
         );
       })}

@@ -23,7 +23,6 @@ router.get('/week', (req, res) => {
   res.json({
     start,
     workouts: weekData('workouts', start, end),
-    meals: weekData('meals', start, end),
     shakes: weekData('shakes', start, end),
     vitamins: weekData('vitamins', start, end),
     water: waterRows,
@@ -40,7 +39,6 @@ router.get('/day', (req, res) => {
   res.json({
     date,
     workouts: db.prepare('SELECT * FROM workouts WHERE date = ? ORDER BY logged_at').all(date),
-    meals: db.prepare('SELECT * FROM meals WHERE date = ? ORDER BY logged_at').all(date),
     shakes: db.prepare('SELECT * FROM shakes WHERE date = ? ORDER BY logged_at').all(date),
     vitamins: db.prepare('SELECT * FROM vitamins WHERE date = ? ORDER BY logged_at').all(date),
     water: db.prepare('SELECT * FROM water_logs WHERE date = ? ORDER BY logged_at').all(date),

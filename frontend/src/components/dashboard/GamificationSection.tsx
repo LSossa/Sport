@@ -1,38 +1,7 @@
-import { CheckCircle2, Circle } from 'lucide-react';
+import { useState } from 'react';
+import { CheckCircle2, Circle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useGamification } from '../../hooks/useGamification';
 import type { GamificationStreaks, GamificationMissions, GamificationXp, GamificationBadge } from '../../api/types';
-
-function StreaksCard({ streaks }: { streaks: GamificationStreaks }) {
-  const items: { label: string; icon: string; value: number }[] = [
-    { label: 'Run',      icon: '🏃', value: streaks.run },
-    { label: 'WOD',      icon: '🏋️', value: streaks.wod },
-    { label: 'Vitamins', icon: '💊', value: streaks.vitamins },
-    { label: 'Shakes',   icon: '🥤', value: streaks.shakes },
-    { label: 'Water',    icon: '💧', value: streaks.water },
-  ];
-
-  return (
-    <div className="bg-slate-800 rounded-xl p-4 mb-3">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-xl">🔥</span>
-        <span className="font-semibold text-white">Streaks</span>
-      </div>
-      <div className="grid grid-cols-5 gap-2">
-        {items.map(({ label, icon, value }) => (
-          <div key={label} className="flex flex-col items-center gap-1">
-            <span className="text-lg">{icon}</span>
-            {value > 0 ? (
-              <span className="text-base font-bold text-orange-400">🔥{value}</span>
-            ) : (
-              <span className="text-base text-slate-500">—</span>
-            )}
-            <span className="text-xs text-slate-400">{label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function DailyMissionsCard({ missions }: { missions: GamificationMissions }) {
   const simpleItems = [
@@ -99,64 +68,112 @@ function DailyMissionsCard({ missions }: { missions: GamificationMissions }) {
   );
 }
 
-function XpLevelCard({ xp }: { xp: GamificationXp }) {
+function StreaksAndXpCard({ streaks, xp }: { streaks: GamificationStreaks; xp: GamificationXp }) {
+  const streakItems: { label: string; icon: string; value: number }[] = [
+    { label: 'Run',      icon: '🏃', value: streaks.run },
+    { label: 'WOD',      icon: '🏋️', value: streaks.wod },
+    { label: 'Vitamins', icon: '💊', value: streaks.vitamins },
+    { label: 'Shakes',   icon: '🥤', value: streaks.shakes },
+    { label: 'Water',    icon: '💧', value: streaks.water },
+  ];
+
   const xpToNext = xp.nextLevelXp != null ? xp.nextLevelXp - xp.total : null;
 
   return (
     <div className="bg-slate-800 rounded-xl p-4 mb-3">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <span className="text-xl">⚡</span>
-          <span className="font-semibold text-white">{xp.level}</span>
+      <div className="flex items-start gap-4">
+        {/* Streaks column */}
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-base">🔥</span>
+            <span className="text-sm font-semibold text-white">Streaks</span>
+          </div>
+          <div className="grid grid-cols-5 gap-1">
+            {streakItems.map(({ label, icon, value }) => (
+              <div key={label} className="flex flex-col items-center gap-0.5">
+                <span className="text-sm">{icon}</span>
+                {value > 0
+                  ? <span className="text-xs font-bold text-orange-400">🔥{value}</span>
+                  : <span className="text-xs text-slate-500">—</span>
+                }
+              </div>
+            ))}
+          </div>
         </div>
-        <span className="text-sm text-slate-400">{xp.total.toLocaleString()} XP</span>
+
+        {/* Divider */}
+        <div className="w-px bg-slate-700 self-stretch" />
+
+        {/* XP column */}
+        <div className="flex-1">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1">
+              <span className="text-base">⚡</span>
+              <span className="text-sm font-semibold text-white">{xp.level}</span>
+            </div>
+            <span className="text-xs text-slate-400">{xp.total.toLocaleString()} XP</span>
+          </div>
+          <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden mb-1">
+            <div
+              className="h-full bg-yellow-400 rounded-full transition-all"
+              style={{ width: `${xp.progressPercent}%` }}
+            />
+          </div>
+          <span className="text-xs text-slate-500">
+            {xpToNext != null ? `${xpToNext} XP to next` : 'Max level'}
+          </span>
+        </div>
       </div>
-      <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden mb-1">
-        <div
-          className="h-full bg-yellow-400 rounded-full transition-all"
-          style={{ width: `${xp.progressPercent}%` }}
-        />
-      </div>
-      <span className="text-xs text-slate-500">
-        {xpToNext != null ? `${xpToNext} XP to next level` : 'Max level reached'}
-      </span>
     </div>
   );
 }
 
 function BadgesCard({ earned, upcoming }: { earned: GamificationBadge[]; upcoming: GamificationBadge[] }) {
+  const [expanded, setExpanded] = useState(false);
+
   return (
     <div className="bg-slate-800 rounded-xl p-4 mb-3">
-      <div className="flex items-center gap-2 mb-3">
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className="w-full flex items-center gap-2"
+      >
         <span className="text-xl">🏅</span>
         <span className="font-semibold text-white">Badges</span>
-        <span className="text-xs text-slate-400 ml-auto">{earned.length} earned</span>
-      </div>
-      {earned.length === 0 && upcoming.length === 0 && (
-        <p className="text-sm text-slate-500">Log activities to earn badges!</p>
+        <span className="text-xs text-slate-400 ml-1">{earned.length} earned</span>
+        <span className="ml-auto text-slate-400">
+          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </span>
+      </button>
+
+      {expanded && (
+        <div className="mt-3">
+          {earned.length === 0 && upcoming.length === 0 && (
+            <p className="text-sm text-slate-500">Log activities to earn badges!</p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {earned.map(badge => (
+              <div
+                key={badge.id}
+                title={`${badge.name}: ${badge.description}`}
+                className="flex items-center gap-1 bg-slate-700 rounded-lg px-2 py-1 cursor-default"
+              >
+                <span>🏅</span>
+                <span className="text-xs text-white">{badge.name}</span>
+              </div>
+            ))}
+            {upcoming.map(badge => (
+              <div
+                key={badge.id}
+                title={badge.description}
+                className="flex items-center gap-1 bg-slate-700/50 rounded-lg px-2 py-1 cursor-default opacity-50"
+              >
+                <span className="text-slate-500">○</span>
+                <span className="text-xs text-slate-400">{badge.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
-      <div className="flex flex-wrap gap-2">
-        {earned.map(badge => (
-          <div
-            key={badge.id}
-            title={`${badge.name}: ${badge.description}`}
-            className="flex items-center gap-1 bg-slate-700 rounded-lg px-2 py-1 cursor-default"
-          >
-            <span>🏅</span>
-            <span className="text-xs text-white">{badge.name}</span>
-          </div>
-        ))}
-        {upcoming.map(badge => (
-          <div
-            key={badge.id}
-            title={badge.description}
-            className="flex items-center gap-1 bg-slate-700/50 rounded-lg px-2 py-1 cursor-default opacity-50"
-          >
-            <span className="text-slate-500">○</span>
-            <span className="text-xs text-slate-400">{badge.name}</span>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
@@ -173,8 +190,7 @@ export function GamificationSection() {
   return (
     <>
       <DailyMissionsCard missions={data.missions} />
-      <StreaksCard streaks={data.streaks} />
-      <XpLevelCard xp={data.xp} />
+      <StreaksAndXpCard streaks={data.streaks} xp={data.xp} />
       <BadgesCard earned={data.badges.earned} upcoming={data.badges.upcoming} />
     </>
   );

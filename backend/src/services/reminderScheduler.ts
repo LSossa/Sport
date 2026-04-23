@@ -3,12 +3,11 @@ import { DateTime } from 'luxon';
 import db from '../db/client';
 import { sendPushToAll } from './pushService';
 
-const CATEGORIES = ['workouts', 'meals', 'shakes', 'vitamins', 'water'] as const;
+const CATEGORIES = ['workouts', 'shakes', 'vitamins', 'water'] as const;
 type Category = typeof CATEGORIES[number];
 
 const TABLE: Record<Category, string> = {
   workouts: 'workouts',
-  meals: 'meals',
   shakes: 'shakes',
   vitamins: 'vitamins',
   water: 'water_logs',
@@ -16,7 +15,6 @@ const TABLE: Record<Category, string> = {
 
 const LABELS: Record<Category, string> = {
   workouts: 'Workout',
-  meals: 'Meals',
   shakes: 'Shake',
   vitamins: 'Vitamins',
   water: 'Water',

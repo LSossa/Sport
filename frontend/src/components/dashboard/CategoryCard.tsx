@@ -11,6 +11,8 @@ interface Props {
   onDayClick?: (date: string) => void;
 }
 
+const DAY_LABELS = ['M', 'Tu', 'W', 'Th', 'F', 'Sa', 'Su'];
+
 export function CategoryCard({ label, icon, data, weekStart, waterGoal, isWater, onDayClick }: Props) {
   const days = Array.from({ length: 7 }, (_, i) => format(addDays(startOfWeek(weekStart, { weekStartsOn: 1 }), i), 'yyyy-MM-dd'));
 
@@ -29,7 +31,7 @@ export function CategoryCard({ label, icon, data, weekStart, waterGoal, isWater,
         </div>
         <span className="text-sm text-slate-400">{totalLogged}</span>
       </div>
-      <div className="flex gap-1">
+      <div className="flex gap-2">
         {days.map(date => {
           const val = byDate.get(date) ?? 0;
           let filled = false;
@@ -57,7 +59,7 @@ export function CategoryCard({ label, icon, data, weekStart, waterGoal, isWater,
         })}
       </div>
       <div className="flex justify-between mt-1">
-        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
+        {DAY_LABELS.map((d, i) => (
           <span key={i} className="flex-1 text-center text-xs text-slate-500">{d}</span>
         ))}
       </div>

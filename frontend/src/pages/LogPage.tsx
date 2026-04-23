@@ -1,15 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Layout } from '../components/layout/Layout';
 import { WorkoutForm } from '../components/workouts/WorkoutForm';
-import { MealForm } from '../components/meals/MealForm';
 import { ShakeForm } from '../components/shakes/ShakeForm';
 import { VitaminForm } from '../components/vitamins/VitaminForm';
 import { WaterForm } from '../components/water/WaterForm';
 
 const TABS = [
   { id: 'workout', label: 'Workout', icon: '🏋️' },
-  { id: 'meal', label: 'Meal', icon: '🍽️' },
   { id: 'shake', label: 'Shake', icon: '🥤' },
   { id: 'vitamin', label: 'Vitamin', icon: '💊' },
   { id: 'water', label: 'Water', icon: '💧' },
@@ -17,17 +15,26 @@ const TABS = [
 
 type TabId = typeof TABS[number]['id'];
 
+const STORAGE_KEY = 'log_last_tab';
+
 export function LogPage() {
-  const [active, setActive] = useState<TabId>('workout');
+  const [active, setActive] = useState<TabId>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY) as TabId | null;
+    return saved && TABS.some(t => t.id === saved) ? saved : 'workout';
+  });
   const [saved, setSaved] = useState(false);
   const today = format(new Date(), 'yyyy-MM-dd');
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, active);
+  }, [active]);
 
   const onDone = () => { setSaved(true); setTimeout(() => setSaved(false), 2000); };
 
   return (
     <Layout title="Log Entry">
       {saved && (
-        <div className="mb-4 py-2 px-4 bg-green-700 text-white rounded-lg text-center text-sm font-medium animate-pulse">
+        <div className="mb-4 py-2 px-4 bg-green-700 text-white rounded-lg text-center text-sm font-medium animate-bounce">
           Saved!
         </div>
       )}
@@ -43,7 +50,6 @@ export function LogPage() {
       </div>
 
       {active === 'workout' && <WorkoutForm date={today} onDone={onDone} />}
-      {active === 'meal' && <MealForm date={today} onDone={onDone} />}
       {active === 'shake' && <ShakeForm date={today} onDone={onDone} />}
       {active === 'vitamin' && <VitaminForm date={today} onDone={onDone} />}
       {active === 'water' && <WaterForm date={today} onDone={onDone} />}

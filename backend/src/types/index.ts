@@ -27,19 +27,6 @@ export interface ExerciseSet {
   notes: string | null;
 }
 
-export interface Meal {
-  id: number;
-  logged_at: string;
-  date: string;
-  meal_type: string | null;
-  description: string;
-  calories: number | null;
-  protein_g: number | null;
-  carbs_g: number | null;
-  fat_g: number | null;
-  notes: string | null;
-}
-
 export interface Shake {
   id: number;
   logged_at: string;

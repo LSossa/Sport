@@ -30,7 +30,9 @@ export function computeStreaks(today: string) {
   const vitaminDates = (db.prepare(
     "SELECT date FROM vitamins WHERE name IN ('Omega-3','Multivitamin') GROUP BY date HAVING COUNT(DISTINCT name) = 2 ORDER BY date DESC"
   ).all() as { date: string }[]).map(r => r.date);
-  const shakeDates = (db.prepare('SELECT DISTINCT date FROM shakes ORDER BY date DESC').all() as { date: string }[]).map(r => r.date);
+  const shakeDates = (db.prepare(
+    "SELECT date FROM shakes WHERE name IN ('Protein Shake','Creatine Monohydrate') GROUP BY date HAVING COUNT(DISTINCT name) = 2 ORDER BY date DESC"
+  ).all() as { date: string }[]).map(r => r.date);
 
   const waterGoal = getWaterGoal();
   const waterDates = (db.prepare('SELECT date FROM water_logs GROUP BY date HAVING SUM(amount_ml) >= ?').all(waterGoal) as { date: string }[]).map(r => r.date);
@@ -52,7 +54,9 @@ export function getDailyMissions(today: string) {
   const omega3Done = (db.prepare("SELECT COUNT(*) as c FROM vitamins WHERE date = ? AND name = 'Omega-3'").get(today) as { c: number }).c > 0;
   const multiDone  = (db.prepare("SELECT COUNT(*) as c FROM vitamins WHERE date = ? AND name = 'Multivitamin'").get(today) as { c: number }).c > 0;
   const vitaminsDone = omega3Done && multiDone;
-  const shakesDone = (db.prepare('SELECT COUNT(*) as c FROM shakes WHERE date = ?').get(today) as { c: number }).c > 0;
+  const proteinDone = (db.prepare("SELECT COUNT(*) as c FROM shakes WHERE date = ? AND name = 'Protein Shake'").get(today) as { c: number }).c > 0;
+  const creatineDone = (db.prepare("SELECT COUNT(*) as c FROM shakes WHERE date = ? AND name = 'Creatine Monohydrate'").get(today) as { c: number }).c > 0;
+  const shakesDone = proteinDone && creatineDone;
   const waterAmount = (db.prepare('SELECT COALESCE(SUM(amount_ml),0) as total FROM water_logs WHERE date = ?').get(today) as { total: number }).total;
 
   return {
@@ -77,7 +81,9 @@ function buildBadgeStats(today: string): BadgeCheckStats {
   const totalVitaminDays = (db.prepare(
     "SELECT COUNT(*) as c FROM (SELECT date FROM vitamins WHERE name IN ('Omega-3','Multivitamin') GROUP BY date HAVING COUNT(DISTINCT name) = 2)"
   ).get() as { c: number }).c;
-  const totalShakeDays = (db.prepare('SELECT COUNT(DISTINCT date) as c FROM shakes').get() as { c: number }).c;
+  const totalShakeDays = (db.prepare(
+    "SELECT COUNT(*) as c FROM (SELECT date FROM shakes WHERE name IN ('Protein Shake','Creatine Monohydrate') GROUP BY date HAVING COUNT(DISTINCT name) = 2)"
+  ).get() as { c: number }).c;
   const totalWaterGoalDays = (db.prepare('SELECT COUNT(*) as c FROM (SELECT date FROM water_logs GROUP BY date HAVING SUM(amount_ml) >= ?)').get(waterGoal) as { c: number }).c;
 
   // Perfect week: all 5 categories logged on the same day, check consecutive days
@@ -106,7 +112,8 @@ function computePerfectDayStreak(today: string, waterGoal: number): number {
     const wodDone = (db.prepare("SELECT COUNT(*) as c FROM workouts WHERE date = ? AND type = 'Crossfit'").get(cursor) as { c: number }).c > 0;
     const vitDone = (db.prepare("SELECT COUNT(*) as c FROM vitamins WHERE date = ? AND name = 'Omega-3'").get(cursor) as { c: number }).c > 0
       && (db.prepare("SELECT COUNT(*) as c FROM vitamins WHERE date = ? AND name = 'Multivitamin'").get(cursor) as { c: number }).c > 0;
-    const shakeDone = (db.prepare('SELECT COUNT(*) as c FROM shakes WHERE date = ?').get(cursor) as { c: number }).c > 0;
+    const shakeDone = (db.prepare("SELECT COUNT(*) as c FROM shakes WHERE date = ? AND name = 'Protein Shake'").get(cursor) as { c: number }).c > 0
+      && (db.prepare("SELECT COUNT(*) as c FROM shakes WHERE date = ? AND name = 'Creatine Monohydrate'").get(cursor) as { c: number }).c > 0;
     const waterAmt = (db.prepare('SELECT COALESCE(SUM(amount_ml),0) as total FROM water_logs WHERE date = ?').get(cursor) as { total: number }).total;
     if ((runDone || wodDone) && vitDone && shakeDone && waterAmt >= waterGoal) {
       streak++;

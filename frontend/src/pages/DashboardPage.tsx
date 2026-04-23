@@ -43,7 +43,6 @@ export function DashboardPage() {
       ) : data ? (
         <>
           <CategoryCard label="Workouts" icon="🏋️" data={data.workouts} weekStart={weekDate} onDayClick={handleDayClick} />
-          <CategoryCard label="Meals" icon="🍽️" data={data.meals} weekStart={weekDate} onDayClick={handleDayClick} />
           <CategoryCard label="Shakes" icon="🥤" data={data.shakes} weekStart={weekDate} onDayClick={handleDayClick} />
           <CategoryCard label="Vitamins" icon="💊" data={data.vitamins} weekStart={weekDate} onDayClick={handleDayClick} />
           <CategoryCard label="Water" icon="💧" data={data.water} weekStart={weekDate} isWater waterGoal={data.water_goal_ml} onDayClick={handleDayClick} />

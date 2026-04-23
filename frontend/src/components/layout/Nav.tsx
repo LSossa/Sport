@@ -1,10 +1,10 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, History, Plus, Settings } from 'lucide-react';
+import { LayoutDashboard, History, PenLine, Settings } from 'lucide-react';
 
 const tabs = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/history', icon: History, label: 'History' },
-  { to: '/log', icon: Plus, label: 'Log' },
+  { to: '/log', icon: PenLine, label: 'Log' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
